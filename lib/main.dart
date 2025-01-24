@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/HomePage.dart';
 import 'package:flutter_application_1/MainPageWidget.dart';
+import 'package:flutter_application_1/takeruHomepage.dart';
 
 void main() {
   runApp(const MyApp());
@@ -36,7 +37,7 @@ class MyApp extends StatelessWidget {
       //画面遷移練習の場合
       // home: HomePage(),
       //ListViewの場合
-      home: MainPageWidget(),
+      home: Takeruhomepage(),
     );
   }
 }

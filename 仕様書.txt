@@ -1,0 +1,8 @@
+じぶんがさくせいしたのは
+takeruHomepage.dart
+takeruFirstpage.dart
+takeruSecondpage.dart
+
+ホームページから『1ページ目』を押すと2ページ目に遷移し
+『ホームに戻る』を押すとホームに戻れます
+『2ページ目』も同様です
