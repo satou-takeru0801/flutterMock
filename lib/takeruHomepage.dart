@@ -8,34 +8,29 @@ class Takeruhomepage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text("ホーム"),
-      ),
+      backgroundColor: Colors.red, // 背景を赤に設定
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            TextButton(
-              child: Text("1ページ目に遷移する"),
-              onPressed: () {
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => Takerufirstpage(),
-                    ));
-              },
+        child: GestureDetector(
+          onTap: () {
+            // SOSボタンを押したときの処理（後で追加可能）
+          },
+          child: Container(
+            width: 200,
+            height: 200,
+            decoration: BoxDecoration(
+              color: Colors.white, // 白い丸
+              shape: BoxShape.circle,
             ),
-            TextButton(
-              child: Text("2ページ目に遷移する"),
-              onPressed: () {
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => Takerusecondpage(),
-                    ));
-              },
+            alignment: Alignment.center,
+            child: Text(
+              'SOS',
+              style: TextStyle(
+                color: Colors.black, // 黒字
+                fontSize: 48,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-          ],
+          ),
         ),
       ),
     );
