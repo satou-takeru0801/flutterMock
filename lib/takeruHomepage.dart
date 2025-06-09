@@ -11,63 +11,82 @@ class Takeruhomepage extends StatefulWidget {
 class _TakeruhomepageState extends State<Takeruhomepage> {
   String myId = '';
   List<String> friends = [];
-  TextEditingController friendController = TextEditingController();
+  final TextEditingController friendController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _loadIdAndFriends();
+    _loadLocalData();
   }
 
-  Future<void> _loadIdAndFriends() async {
+  Future<void> _loadLocalData() async {
     final prefs = await SharedPreferences.getInstance();
-    final savedId = prefs.getString('myId') ?? _generateId();
-    final savedFriends = prefs.getStringList('friends') ?? [];
-    await prefs.setString('myId', savedId);
+    String? savedId = prefs.getString('myId');
+    if (savedId == null) {
+      savedId = _generateRandomId();
+      await prefs.setString('myId', savedId);
+    }
+    List<String> savedFriends = prefs.getStringList('friends') ?? [];
+
     setState(() {
-      myId = savedId;
+      myId = savedId!;
       friends = savedFriends;
     });
   }
 
-  String _generateId() {
-    final rand = Random();
-    return List.generate(9, (_) => rand.nextInt(10)).join();
+  String _generateRandomId() {
+    final random = Random();
+    return List.generate(9, (_) => random.nextInt(10)).join();
   }
 
   Future<void> _addFriend(String id) async {
-    if (id.isNotEmpty && !friends.contains(id) && friends.length < 2) {
-      final prefs = await SharedPreferences.getInstance();
-      friends.add(id);
-      await prefs.setStringList('friends', friends);
-      setState(() {});
-    }
+    if (id.isEmpty || friends.contains(id) || friends.length >= 2) return;
+    friends.add(id);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('friends', friends);
+    setState(() {});
   }
 
   Future<void> _sendSOS() async {
-    Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high);
-    String location = "緯度: ${position.latitude}, 経度: ${position.longitude}";
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      return _showDialog("エラー", "位置情報サービスが無効です。");
+    }
 
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      permission = await Geolocator.requestPermission();
+      if (permission != LocationPermission.whileInUse &&
+          permission != LocationPermission.always) {
+        return _showDialog("エラー", "位置情報の許可が必要です。");
+      }
+    }
+
+    Position pos = await Geolocator.getCurrentPosition();
+    String message = "現在地:\n緯度: ${pos.latitude}\n経度: ${pos.longitude}\n\n"
+        "以下のフレンドに送信:\n${friends.join('\n')}";
+
+    _showDialog("SOS発信", message);
+  }
+
+  void _showDialog(String title, String content) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text('SOS送信'),
-        content: Text('次のフレンドに通知：\n${friends.join(", ")}\n\n位置情報：$location'),
+        title: Text(title),
+        content: Text(content),
         actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context), child: Text('OK')),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text("OK"))
         ],
       ),
     );
-
-    // TODO: Firebase連携などで通知送信処理
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("娘SOS ホーム")),
+      appBar: AppBar(title: Text("娘SOS")),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -75,34 +94,30 @@ class _TakeruhomepageState extends State<Takeruhomepage> {
             Text("あなたのID: $myId", style: TextStyle(fontSize: 16)),
             SizedBox(height: 20),
             ElevatedButton(
+              onPressed: _sendSOS,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
                 shape: CircleBorder(),
                 padding: EdgeInsets.all(60),
               ),
-              onPressed: _sendSOS,
               child: Text("SOS",
                   style: TextStyle(fontSize: 32, color: Colors.white)),
             ),
-            SizedBox(height: 30),
-            ElevatedButton(
-              onPressed: () {},
-              child: Text("フレンド追加"),
-            ),
+            SizedBox(height: 20),
             TextField(
               controller: friendController,
-              decoration: InputDecoration(labelText: "フレンドIDを入力"),
               keyboardType: TextInputType.number,
+              decoration: InputDecoration(labelText: "フレンドIDを入力"),
             ),
             ElevatedButton(
               onPressed: () {
                 _addFriend(friendController.text.trim());
                 friendController.clear();
               },
-              child: Text("フレンドに追加"),
+              child: Text("フレンド追加"),
             ),
             SizedBox(height: 20),
-            Text("フレンド一覧:"),
+            Text("登録済みフレンド:"),
             ...friends.map((id) => ListTile(title: Text(id))),
           ],
         ),
