@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:flutter/services.dart';
 
 class Takeruhomepage extends StatefulWidget {
   @override
@@ -91,31 +92,61 @@ class _TakeruhomepageState extends State<Takeruhomepage> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            Text("あなたのID: $myId", style: TextStyle(fontSize: 16)),
+            Row(
+              children: [
+                Expanded(
+                    child:
+                        Text("あなたのID: $myId", style: TextStyle(fontSize: 16))),
+                IconButton(
+                  icon: Icon(Icons.copy),
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: myId));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text("IDをコピーしました")),
+                    );
+                  },
+                ),
+              ],
+            ),
             SizedBox(height: 20),
+
+            // 超巨大SOSボタン
             ElevatedButton(
               onPressed: _sendSOS,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
                 shape: CircleBorder(),
-                padding: EdgeInsets.all(60),
+                padding: EdgeInsets.all(100), // ← 超でかく
               ),
               child: Text("SOS",
-                  style: TextStyle(fontSize: 32, color: Colors.white)),
+                  style: TextStyle(fontSize: 40, color: Colors.white)),
             ),
-            SizedBox(height: 20),
-            TextField(
-              controller: friendController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(labelText: "フレンドIDを入力"),
+
+            SizedBox(height: 30),
+
+            // フレンドID入力欄を数字12桁相当にする
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 240, // 約12桁相当（20px × 12）
+                  child: TextField(
+                    controller: friendController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(labelText: "フレンドIDを入力"),
+                  ),
+                ),
+                SizedBox(width: 10),
+                ElevatedButton(
+                  onPressed: () {
+                    _addFriend(friendController.text.trim());
+                    friendController.clear();
+                  },
+                  child: Text("追加"),
+                ),
+              ],
             ),
-            ElevatedButton(
-              onPressed: () {
-                _addFriend(friendController.text.trim());
-                friendController.clear();
-              },
-              child: Text("フレンド追加"),
-            ),
+
             SizedBox(height: 20),
             Text("登録済みフレンド:"),
             ...friends.map((id) => ListTile(title: Text(id))),
