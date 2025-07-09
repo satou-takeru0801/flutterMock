@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class Takeruhomepage extends StatefulWidget {
   @override
@@ -11,27 +12,22 @@ class Takeruhomepage extends StatefulWidget {
 
 class _TakeruhomepageState extends State<Takeruhomepage> {
   String myId = '';
-  List<String> friends = [];
-  final TextEditingController friendController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _loadLocalData();
+    _loadMyId();
   }
 
-  Future<void> _loadLocalData() async {
+  Future<void> _loadMyId() async {
     final prefs = await SharedPreferences.getInstance();
     String? savedId = prefs.getString('myId');
     if (savedId == null) {
       savedId = _generateRandomId();
       await prefs.setString('myId', savedId);
     }
-    List<String> savedFriends = prefs.getStringList('friends') ?? [];
-
     setState(() {
       myId = savedId!;
-      friends = savedFriends;
     });
   }
 
@@ -40,35 +36,22 @@ class _TakeruhomepageState extends State<Takeruhomepage> {
     return List.generate(9, (_) => random.nextInt(10)).join();
   }
 
-  Future<void> _addFriend(String id) async {
-    if (id.isEmpty || friends.contains(id) || friends.length >= 2) return;
-    friends.add(id);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList('friends', friends);
-    setState(() {});
-  }
+  Future<void> _sendSosViaLine() async {
+    try {
+      Position pos = await Geolocator.getCurrentPosition();
+      String mapUrl =
+          "https://maps.google.com/?q=${pos.latitude},${pos.longitude}";
+      String message = Uri.encodeComponent("【SOS】助けて！今ここにいます！\n$mapUrl");
+      final lineUrl = Uri.parse("line://msg/text/$message");
 
-  Future<void> _sendSOS() async {
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      return _showDialog("エラー", "位置情報サービスが無効です。");
-    }
-
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied ||
-        permission == LocationPermission.deniedForever) {
-      permission = await Geolocator.requestPermission();
-      if (permission != LocationPermission.whileInUse &&
-          permission != LocationPermission.always) {
-        return _showDialog("エラー", "位置情報の許可が必要です。");
+      if (await canLaunchUrl(lineUrl)) {
+        await launchUrl(lineUrl);
+      } else {
+        _showDialog("エラー", "LINEがインストールされていないか、起動できません。");
       }
+    } catch (e) {
+      _showDialog("エラー", "位置情報を取得できませんでした。\n$e");
     }
-
-    Position pos = await Geolocator.getCurrentPosition();
-    String message = "現在地:\n緯度: ${pos.latitude}\n経度: ${pos.longitude}\n\n"
-        "以下のフレンドに送信:\n${friends.join('\n')}";
-
-    _showDialog("SOS発信", message);
   }
 
   void _showDialog(String title, String content) {
@@ -92,6 +75,7 @@ class _TakeruhomepageState extends State<Takeruhomepage> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
+            // 自分のIDとコピー機能
             Row(
               children: [
                 Expanded(
@@ -108,48 +92,19 @@ class _TakeruhomepageState extends State<Takeruhomepage> {
                 ),
               ],
             ),
-            SizedBox(height: 20),
+            SizedBox(height: 40),
 
             // 超巨大SOSボタン
             ElevatedButton(
-              onPressed: _sendSOS,
+              onPressed: _sendSosViaLine,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
                 shape: CircleBorder(),
-                padding: EdgeInsets.all(100), // ← 超でかく
+                padding: EdgeInsets.all(100),
               ),
               child: Text("SOS",
                   style: TextStyle(fontSize: 40, color: Colors.white)),
             ),
-
-            SizedBox(height: 30),
-
-            // フレンドID入力欄を数字12桁相当にする
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 240, // 約12桁相当（20px × 12）
-                  child: TextField(
-                    controller: friendController,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(labelText: "フレンドIDを入力"),
-                  ),
-                ),
-                SizedBox(width: 10),
-                ElevatedButton(
-                  onPressed: () {
-                    _addFriend(friendController.text.trim());
-                    friendController.clear();
-                  },
-                  child: Text("追加"),
-                ),
-              ],
-            ),
-
-            SizedBox(height: 20),
-            Text("登録済みフレンド:"),
-            ...friends.map((id) => ListTile(title: Text(id))),
           ],
         ),
       ),
